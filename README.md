@@ -1,3 +1,3 @@
 # Netkov_gh
 
-Active. Currently training.. More to come here soon.
+Active and messy. Currently training.. Cleaning and More to come here soon.
