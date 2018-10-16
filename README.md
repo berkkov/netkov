@@ -1,2 +1,3 @@
 # Netkov_gh
-Active.. more to come.
+
+Active. Currently training.. More to come here soon.
