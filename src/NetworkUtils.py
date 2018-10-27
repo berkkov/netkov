@@ -96,8 +96,12 @@ class Visualizer(object):
 class CroppedNet(nn.Module):
     def __init__(self, model, layer_num):
         super(CroppedNet,self).__init__()
-        self.cropped_net = nn.Sequential(*list(model.QueryEmbedder.backbone.features.children())[:layer_num+1])
-        print(list(model.QueryEmbedder.backbone.features.children())[layer_num])
+        if layer_num == 'all':
+            self.cropped_net = self.cropped_net = nn.Sequential(*list(model.QueryEmbedder.backbone.features.children())[:])
+            print(list(model.QueryEmbedder.backbone.features.children())[:])
+        else:
+            self.cropped_net = nn.Sequential(*list(model.QueryEmbedder.backbone.features.children())[:layer_num+1])
+            print(list(model.QueryEmbedder.backbone.features.children())[layer_num])
 
     def forward(self, input):
         return self.cropped_net(input)
@@ -442,5 +446,5 @@ if __name__ == '__main__':
         #visualizer.visualize_activations(activations, layer_no)
         #visualizer.log_activation_stats(activations, layer_no)
 
-    visualizer = Visualizer(model, 'D:\\Indirilenler\\adadelta_checkpoint_50_10.pth.tar')
-    visualizer.log_weights(4)
+    visualizer = Visualizer(model, 'D:\\Indirilenler\\adadelta_checkpoint_1450_19.pth.tar')
+    visualizer.log_weights('all')

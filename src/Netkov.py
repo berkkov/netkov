@@ -8,10 +8,14 @@ from torchvision.models import resnet101
 
 
 class ConnectedLayers(nn.Module):
-    def __init__(self):
+    def __init__(self, include_shallow_net=True):
         super(ConnectedLayers, self).__init__()
+        if include_shallow_net:
+            first_lin = 6336
+        else:
+            first_lin = 1536
 
-        self.linear1 = nn.Linear(6336, 3072)
+        self.linear1 = nn.Linear(first_lin, 3072)
         self.linrelu1 = nn.ReLU(3072)
         self.dropout1 = nn.Dropout(p=0.4)
         self.linear2 = nn.Linear(3072, 2048)
@@ -35,19 +39,26 @@ class ConnectedLayers(nn.Module):
 
 
 class Netkov(nn.Module):
-    def __init__(self):
+    def __init__(self, include_shallow_net=True):
         super(Netkov, self).__init__()
+        self.include_shallow_net = include_shallow_net
 
-        self.ShallowNet = ShallowNet()
+        if self.include_shallow_net:
+            self.ShallowNet = ShallowNet()
+
         self.backbone = Inception()
-        self.linears = ConnectedLayers()
+        self.linears = ConnectedLayers(include_shallow_net=self.include_shallow_net)
 
     def forward(self, input):
-        x0 = self.backbone(input)  # Output of the CNN
-        x1 = self.ShallowNet(input)  # Concatenated output of the two shallow nets
+        if self.include_shallow_net:
+            x0 = self.backbone(input)  # Output of the CNN
+            x1 = self.ShallowNet(input)  # Concatenated output of the two shallow nets
 
-        x = torch.cat((x0, x1), 1)
-        x = self.linears(x)
+            x = torch.cat((x0, x1), 1)
+            x = self.linears(x)
+        else:
+            x = self.backbone(input)
+            x = self.linears(x)
         return x
 
 
@@ -57,7 +68,6 @@ class TripletNetkov(nn.Module):
         self.EmbeddingNet = Netkov().cuda()
         n_parameters = sum([p.data.nelement() for p in self.EmbeddingNet.parameters()])
         print('  + Number of params: {}'.format(n_parameters))
-
 
     def forward(self, query, positive, negative):
         q = self.EmbeddingNet(query)
