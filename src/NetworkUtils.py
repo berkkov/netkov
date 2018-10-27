@@ -108,12 +108,13 @@ class CroppedNet(nn.Module):
 
 
 class TripletLoader(torch.utils.data.Dataset):
-    def __init__(self, triplets_path):
+    def __init__(self, triplets_path, network_type):
+        self.network_type = network_type
         with open(triplets_path) as file:
             reader = csv.reader(file)
             self.triplets = [triplet for triplet in reader]
         self.loader = LoadImage()
-        self.transformer = TransformImage()
+        self.transformer = TransformImage(network_type=self.network_type)
 
     def __getitem__(self, index):
 
@@ -146,11 +147,11 @@ class ContinuedSampler(torch.utils.data.sampler.Sampler):
 
 
 class FVBatchLoader(torch.utils.data.Dataset):
-    def __init__(self, imgs_path):
+    def __init__(self, imgs_path, network_type):
 
         self.images = [img for img in imgs_path]            # wtf
         self.loader = LoadImage()
-        self.transformer = TransformImage()
+        self.transformer = TransformImage(network_type=network_type)
 
     def __getitem__(self, index):           # TODO: First delimiter might bug between linux - windows
         return self.images[index].split('/')[-1].split(".")[0], torch.autograd.Variable(self.transformer(self.loader(self.images[index])))
@@ -188,11 +189,16 @@ class ToRange255(object):
 
 class TransformImage(object):
 
-    def __init__(self, scale=0.875, random_crop=False,
+    def __init__(self, network_type, scale=0.875, random_crop=False,
                  random_hflip=False, random_vflip=False,
                  preserve_aspect_ratio=False):
 
-        self.input_size = [3, 299, 299]
+        assert network_type in ['resnet', 'inception']
+        if network_type =='inception':
+            self.input_size = [3, 299, 299]
+        elif network_type == 'resnet':
+            self.input_size = [3, 224, 224]
+
         self.input_space = 'RGB'
         self.input_range = [0, 1]
         self.mean = [0.5, 0.5, 0.5] # for Imagenet
@@ -250,11 +256,11 @@ class LoadImage(object):
 
 class BatchLoader(object):
 
-    def __init__(self, batch_size):
+    def __init__(self, batch_size, network_type):
 
         self.batch_size = batch_size
         self.img_loader = LoadImage()
-        self.transformer = TransformImage()
+        self.transformer = TransformImage(network_type=network_type)
 
     def load_batch(self, batch):
         '''
@@ -287,9 +293,9 @@ class BatchLoader(object):
 
 
 class SingleImageLoader(object):
-    def __init__(self):
+    def __init__(self, network_type):
         self.img_loader = LoadImage()
-        self.transformer = TransformImage()
+        self.transformer = TransformImage(network_type=network_type)
     def load_image(self,img_path):
         image = self.img_loader(img_path)
         image = self.transformer(image)
@@ -300,7 +306,7 @@ class SingleImageLoader(object):
 
 
 class TripletDataset(object):
-    def __init__(self, triplets_path):
+    def __init__(self, triplets_path, network_type):
         """
 
         :param triplets_file: List of lists containing all the triplets and corresponding image paths.
@@ -311,7 +317,7 @@ class TripletDataset(object):
             reader = csv.reader(file)
             self.triplets = [triplet for triplet in reader]
         self.loader = LoadImage()
-        self.transformer = TransformImage()
+        self.transformer = TransformImage(network_type=network_type)
 
 
     def load_single_triplet(self, index):

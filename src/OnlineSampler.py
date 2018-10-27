@@ -4,7 +4,7 @@ import glob
 import random
 import NetworkUtils as util
 import csv
-from Netkov import EvaNetkov, EvaNetkovCatalog, EvaNetkovQuery
+from Netkov import EvaNetkovCatalog, EvaNetkovQuery
 
 
 class HardTripletSampler(object):
@@ -14,11 +14,12 @@ class HardTripletSampler(object):
         self.path_to_crops = path_to_crops
         self.path_to_catalog = path_to_catalog
         std = model.state_dict()
+        self.shallow_net_status = model.include_shallow_net
+        self.backbone_name = model.backbone_name
 
-        #self.model = EvaNetkov()
-        #self.model = self.model.cuda()
-        self.model_cat = EvaNetkovCatalog()
-        self.model_query = EvaNetkovQuery()
+        self.model_cat = EvaNetkovCatalog(backbone=self.backbone_name, include_shallow_net=self.shallow_net_status)
+        self.model_query = EvaNetkovQuery(backbone=self.backbone_name, include_shallow_net=self.shallow_net_status)
+
         self.model_cat.load_state_dict(std, strict=False)
         self.model_query.load_state_dict(std, strict=False)
 
@@ -43,10 +44,15 @@ class HardTripletSampler(object):
         torch.save(select_anchors, "cache_select_anchors.pkl")
         crop_d = {}
         catalog_d = {}
+        if self.backbone_name[0] == 'r':
+            loader_type = 'resnet'
+        elif self.backbone_name[0] == 'i':
+            loader_type = 'inception'
 
         with torch.no_grad():
 
-            data_loader = torch.utils.data.DataLoader(util.FVBatchLoader(select_anchors),
+            data_loader = torch.utils.data.DataLoader(util.FVBatchLoader(select_anchors,
+                                                                         network_type=loader_type),
                                                       batch_size=run_batch_size,
                                                       shuffle=False,
                                                       num_workers=0)
@@ -63,7 +69,8 @@ class HardTripletSampler(object):
                 for i in range(0, len(id)):
                     crop_d[id[i]] = embeds[i].cpu()
 
-            data_loader = torch.utils.data.DataLoader(util.FVBatchLoader(glob.glob(self.path_to_catalog + "/*.jpg")),
+            data_loader = torch.utils.data.DataLoader(util.FVBatchLoader(glob.glob(self.path_to_catalog + "/*.jpg"),
+                                                                         network_type=loader_type),
                                                       batch_size=run_batch_size,
                                                       shuffle=False,
                                                       num_workers=0)
@@ -127,8 +134,6 @@ class HardTripletSampler(object):
 
     def sample_fast(self, num_anchors=1000, run_batch_size=150, extra_cat_num=1500, cat_inclusive=False):
         """
-        Sampling triplets from a small sample of the dataset as proposed in the paper In Defense of the Triplet Loss
-        for Person Re-Identification by Alexander Hermans, Lucas Beyer and Bastian Leibe.
         :param num_anchors:
         :param run_batch_size:
         :param extra_cat_num:
@@ -137,6 +142,7 @@ class HardTripletSampler(object):
         """
         triplets = []
         print("Begin sampling operation")
+        print("Sampler length: ", len(self.anchor_path_list))
         anchor_indices = random.sample(range(0, len(self.anchor_path_list)), num_anchors)
         select_anchors = [self.anchor_path_list[j] for j in anchor_indices]
 
@@ -157,9 +163,16 @@ class HardTripletSampler(object):
         # Combine positive catalog images and extras
         candidate_positive_pth += extra_cats
         num_zero = 0
+
+        if self.backbone_name[0] == 'r':
+            loader_type = 'resnet'
+        elif self.backbone_name[0] == 'i':
+            loader_type = 'inception'
+
         with torch.no_grad():
 
-            data_loader = torch.utils.data.DataLoader(util.FVBatchLoader(select_anchors),
+            data_loader = torch.utils.data.DataLoader(util.FVBatchLoader(select_anchors,
+                                                                         network_type=loader_type),
                                                       batch_size=run_batch_size,
                                                       shuffle=False,
                                                       num_workers=0)
@@ -176,7 +189,8 @@ class HardTripletSampler(object):
                 for i in range(0, len(id)):
                     crop_d[id[i]] = embeds[i].cpu()
 
-            data_loader = torch.utils.data.DataLoader(util.FVBatchLoader(candidate_positive_pth),
+            data_loader = torch.utils.data.DataLoader(util.FVBatchLoader(candidate_positive_pth,
+                                                                         network_type=loader_type),
                                                       batch_size=run_batch_size,
                                                       shuffle=False,
                                                       num_workers=0)
@@ -195,6 +209,7 @@ class HardTripletSampler(object):
 
             del embeds
 
+            n_in_pos = 0
             count = 0
             sanity = 0
             print("Calculating query-to-catalog distances and sampling triplets")
@@ -240,11 +255,13 @@ class HardTripletSampler(object):
                         triplets.append((anchor, p[0], n))              # p[0] --connected to x[1] below // p to x[1][0]
                     else:
                         num_zero += 1
+                else:
+                    n_in_pos += 1
+                    print('n_in_pos value found! q, n: ', anchor, n)    # TODO: REMOVE THIS
 
-
-
-            #torch.save(anc_to_cat_dist, "Anc_to_cat_cache.pkl")
-            #torch.save(positive_only, "positive_only_cache.pkl")
+        torch.save(triplets, 'triplet_cache.pkl')
+        #torch.save(anc_to_cat_dist, "Anc_to_cat_cache.pkl")
+        #torch.save(positive_only, "positive_only_cache.pkl")
         with open("hardtrain.csv", "w", newline='') as csvFile:  # base_dir
             writer = csv.writer(csvFile)
             triplets = [[self.path_to_crops + "/" + x[0] + ".jpg", self.path_to_catalog + "/" + x[1] + ".jpg",
@@ -254,26 +271,6 @@ class HardTripletSampler(object):
             del triplets
 
         print('Number of zero losses: ', num_zero)
+        print('Number of n in pos: ', n_in_pos)
 
         return
-'''
-x = (torch.load('anchor_to_positive.pkl'))
-print(len(x))
-print(x)
-y = torch.load('train_ids.pkl')
-#print(y)
-print(len(y))
-
-prev = 0
-while(len(y) != prev):
-    prev = len(y)
-    for i in x:
-        if not x[i] and i in y:
-            y.remove(i)
-
-    print(len(y))
-    print(prev)
-
-print(y)
-torch.save(y, 'train_ids5.pkl')
-'''
