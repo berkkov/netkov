@@ -1,6 +1,8 @@
 # Netkov_gh
 
-Active and messy. Currently training.. Cleaning and More to come here soon.
+Active and messy. Currently training.. Cleaning and More to come here soon. 
+
+Inception and ResNet modules are included so that the Normalization technique can be changed depending on the training procedure (i.e. proxy or triplet). If you are not using transfer learning, changing Batch Normalization to Group normalization gives a more efficient and stable training procedure, especially if you have small batch size, for Triplet sampling and learning due to loss of samples being consistent during both eval and train modes.
 
 train.py contains codes to use triplet learning.    
 
@@ -19,3 +21,5 @@ Works used in/inspired this repo:
 "Where to Buy It: Matching Street Clothing Photos in Online Shops" by M. Hadi Kiapour, Xufeng Han, Svetlana Lazebnik, Alexander C. Berg, Tamara L. Berg
 
 "Deep Learning based Large Scale Visual Recommendation and Search for E-Commerce" by Devashish Shankar, Sujay Narumanchi, H A Ananya, Pramod Kompalli, Krishnendu Chaudhury (arXiv:1703.02344)
+
+"Group Normalization" by Yuxin Wu, Kaiming He (arXiv:1803.08494)
