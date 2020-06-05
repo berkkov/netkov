@@ -1,10 +1,10 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from ShallowNet import ShallowNet
-from InceptionNet import Inception
-import NetworkUtils as util
-from Resnet import resnet34, resnet50, resnet101
+from src.ShallowNet import ShallowNet
+from src.InceptionNet import Inception
+import src.NetworkUtils as util
+from src.Resnet import resnet34, resnet50, resnet101
 from torchvision.models import resnet101
 
 

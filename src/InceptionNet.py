@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import shutil
-import NetworkUtils as utils
+import src.NetworkUtils as utils
 
 
 class BasicConv2d(nn.Module):

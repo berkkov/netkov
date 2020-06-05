@@ -296,6 +296,7 @@ class SingleImageLoader(object):
     def __init__(self, network_type):
         self.img_loader = LoadImage()
         self.transformer = TransformImage(network_type=network_type)
+
     def load_image(self,img_path):
         image = self.img_loader(img_path)
         image = self.transformer(image)
